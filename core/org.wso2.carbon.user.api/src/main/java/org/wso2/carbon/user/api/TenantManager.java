@@ -97,7 +97,7 @@ public interface TenantManager {
      * Checks whether a tenant is active
      *
      * @param tenantId The Id of the tenant
-     * @return
+     * @return Boolean indicating whether the tenant is active or not
      * @throws UserStoreException
      */
     boolean isTenantActive(int tenantId) throws UserStoreException;
