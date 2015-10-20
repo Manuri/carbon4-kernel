@@ -215,16 +215,16 @@ public final class TenantAxisUtils {
     }
 
     /**
-     * Get all the tenant ConfigurationContexts
+     * Returns all the tenant ConfigurationContexts.
      *
      * @param mainConfigCtx Super-tenant Axis2 ConfigurationContext
-     * @return the tenant ConfigurationContexts as a Map of "tenant domain -> ConfigurationContext"
+     * @return The tenant ConfigurationContexts as a Map of "tenant domain -> ConfigurationContext"
      */
     @SuppressWarnings("unchecked")
     public static Map<String, ConfigurationContext>
     getTenantConfigurationContexts(ConfigurationContext mainConfigCtx) {
-        Map<String, ConfigurationContext> tenantConfigContexts = (Map<String, ConfigurationContext>)
-                mainConfigCtx.getProperty(TENANT_CONFIGURATION_CONTEXTS);
+        Map<String, ConfigurationContext> tenantConfigContexts = (Map<String, ConfigurationContext>) mainConfigCtx.
+                getProperty(TENANT_CONFIGURATION_CONTEXTS);
         if (tenantConfigContexts == null) {
             tenantConfigContexts = new ConcurrentHashMap<String, ConfigurationContext>();
             mainConfigCtx.setProperty(TENANT_CONFIGURATION_CONTEXTS, tenantConfigContexts);
