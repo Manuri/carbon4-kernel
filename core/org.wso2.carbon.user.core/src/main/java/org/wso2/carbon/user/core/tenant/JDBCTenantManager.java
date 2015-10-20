@@ -492,6 +492,13 @@ public class JDBCTenantManager implements TenantManager {
         return tenantList.toArray(new Tenant[tenantList.size()]);
     }
 
+    /**
+     * Returns the tenant ID corresponding to the passed tenant domain
+     *
+     * @param tenantDomain The tenant domain of which the ID needs to be retrieved
+     * @return An int value representing the ID of the tenant
+     * @throws UserStoreException This is thrown in case of database connection or query execution error
+     */
     public int getTenantId(String tenantDomain) throws UserStoreException {
         if (tenantDomain != null) {
             tenantDomain = tenantDomain.toLowerCase();
@@ -502,40 +509,46 @@ public class JDBCTenantManager implements TenantManager {
         } else if (tenantDomain == null) {
             return MultitenantConstants.INVALID_TENANT_ID;
         }
+
+        //If the ID is in the cache it can be directly returned without accessing the database
         Integer tenantId = (Integer) tenantDomainIdMap.get(tenantDomain);
         if (tenantId != null) {
             return tenantId;
         }
 
-        Connection dbConnection = null;
-        PreparedStatement prepStmt = null;
-        ResultSet result = null;
         tenantId = MultitenantConstants.INVALID_TENANT_ID;
-        try {
-            dbConnection = getDBConnection();
+
+        try (Connection dbConnection = getDBConnection()) {
             String sqlStmt = TenantConstants.GET_TENANT_ID_SQL;
-            prepStmt = dbConnection.prepareStatement(sqlStmt);
-            prepStmt.setString(1, tenantDomain);
+            try (PreparedStatement prepStmt = dbConnection.prepareStatement(sqlStmt)) {
+                prepStmt.setString(1, tenantDomain);
+                ResultSet result = prepStmt.executeQuery();
 
-            result = prepStmt.executeQuery();
+                if (result.next()) {
+                    tenantId = result.getInt("UM_ID");
+                }
 
-            if (result.next()) {
-                tenantId = result.getInt("UM_ID");
-            }
-            dbConnection.commit();
-            if (tenantDomain != null && !tenantDomain.isEmpty() &&
-                    tenantId != MultitenantConstants.INVALID_TENANT_ID) {
-                tenantDomainIdMap.put(tenantDomain, tenantId);
+                dbConnection.commit();
+
+                if (tenantDomain != null && !tenantDomain.isEmpty() &&
+                        tenantId != MultitenantConstants.INVALID_TENANT_ID) {
+                    tenantDomainIdMap.put(tenantDomain, tenantId);
+                }
+
+            } catch (SQLException e) {
+                DatabaseUtil.rollBack(dbConnection);
+                String msg = "Error while getting the tenant id with tenant domain: " + tenantDomain;
+                if (log.isDebugEnabled()) {
+                    log.debug(msg, e);
+                }
+                throw new UserStoreException(msg, e);
             }
         } catch (SQLException e) {
-            DatabaseUtil.rollBack(dbConnection);
-            String msg = "Error in getting the tenant id with tenant domain: " + tenantDomain + ".";
+            String msg = "Error while accessing the database";
             if (log.isDebugEnabled()) {
                 log.debug(msg, e);
             }
             throw new UserStoreException(msg, e);
-        } finally {
-            DatabaseUtil.closeAllConnections(dbConnection, result, prepStmt);
         }
         return tenantId;
     }
@@ -566,64 +579,71 @@ public class JDBCTenantManager implements TenantManager {
         }
     }
 
+    /**
+     * Deactivates the tenant with the passed tenant ID
+     *
+     * @param tenantId The ID of the tenant to be deactivated
+     * @throws UserStoreException This is thrown if there is an error in database connection or query execution
+     */
     public void deactivateTenant(int tenantId) throws UserStoreException {
 
         // Remove tenant information from the cache.
         tenantIdDomainMap.remove(tenantId);
         tenantCacheManager.clearCacheEntry(new TenantIdKey(tenantId));
 
-        Connection dbConnection = null;
-        PreparedStatement prepStmt = null;
-        try {
-            dbConnection = getDBConnection();
+        try (Connection dbConnection = getDBConnection()) {
             String sqlStmt = TenantConstants.DEACTIVATE_SQL;
-            prepStmt = dbConnection.prepareStatement(sqlStmt);
-            prepStmt.setInt(1, tenantId);
-            prepStmt.executeUpdate();
-            dbConnection.commit();
-        } catch (SQLException e) {
+            try (PreparedStatement prepStmt = dbConnection.prepareStatement(sqlStmt)) {
+                prepStmt.setInt(1, tenantId);
+                prepStmt.executeUpdate();
+                dbConnection.commit();
+            } catch (SQLException e) {
+                DatabaseUtil.rollBack(dbConnection);
 
-            DatabaseUtil.rollBack(dbConnection);
-
-            String msg = "Error in deactivating the tenant with " + "tenant id: "
-                    + tenantId + ".";
-            if (log.isDebugEnabled()) {
+                String msg = "Error in deactivating the tenant with " + "tenant id: " + tenantId;
                 log.debug(msg, e);
+                throw new UserStoreException(msg, e);
             }
+        } catch (SQLException e) {
+            String msg = "Error while accessing the database";
+            log.debug(msg, e);
             throw new UserStoreException(msg, e);
-        } finally {
-            DatabaseUtil.closeAllConnections(dbConnection, prepStmt);
         }
     }
 
+    /**
+     * Checks if the tenant with passed tenant ID is active.
+     *
+     * @param tenantId The ID of the tenant to be checked
+     * @return A Boolean indicating whether the tenant is active or not
+     * @throws UserStoreException This is thrown in case of database connection or query execution error
+     */
     public boolean isTenantActive(int tenantId) throws UserStoreException {
         if (tenantId == MultitenantConstants.SUPER_TENANT_ID) {
             return true;
         }
-        Connection dbConnection = null;
-        PreparedStatement prepStmt = null;
-        try {
-            dbConnection = getDBConnection();
+
+        try (Connection dbConnection = getDBConnection()) {
             String sqlStmt = TenantConstants.IS_TENANT_ACTIVE_SQL;
-            prepStmt = dbConnection.prepareStatement(sqlStmt);
+            PreparedStatement prepStmt = dbConnection.prepareStatement(sqlStmt);
             prepStmt.setInt(1, tenantId);
-            ResultSet result = prepStmt.executeQuery();
-            if (result.next()) {
-                return result.getBoolean("UM_ACTIVE");
-            }
-            dbConnection.commit();
-        } catch (SQLException e) {
 
-            DatabaseUtil.rollBack(dbConnection);
+            try (ResultSet result = prepStmt.executeQuery()) {
+                if (result.next()) {
+                    return result.getBoolean("UM_ACTIVE");
+                }
+                dbConnection.commit();
+            } catch (SQLException e) {
+                DatabaseUtil.rollBack(dbConnection);
 
-            String msg = "Error in getting the tenant status with " + "tenant id: "
-                    + tenantId + ".";
-            if (log.isDebugEnabled()) {
+                String msg = "Error while retrieving the tenant status with " + "tenant id: " + tenantId;
                 log.debug(msg, e);
+                throw new UserStoreException(msg, e);
             }
+        } catch (SQLException e) {
+            String msg = "Error while accessing the database";
+            log.debug(msg, e);
             throw new UserStoreException(msg, e);
-        } finally {
-            DatabaseUtil.closeAllConnections(dbConnection, prepStmt);
         }
         return false;
     }
@@ -643,11 +663,11 @@ public class JDBCTenantManager implements TenantManager {
     }
 
     /**
-     * Delete Tenant
+     * Deletes the data of the tenant.
      *
-     * @param tenantId                    - Tenant Id
-     * @param removeFromPersistentStorage - Flag to decide weather delete from persistent storage
-     * @throws UserStoreException
+     * @param tenantId ID of the tenant of whom the data needs to be deleted
+     * @param removeFromPersistentStorage This is a flag to decide wether to delete from persistent storage or not
+     * @throws UserStoreException This is thrown in case of an error in database connection or query execution
      */
     public void deleteTenant(int tenantId, boolean removeFromPersistentStorage)
             throws org.wso2.carbon.user.api.UserStoreException {
@@ -661,35 +681,32 @@ public class JDBCTenantManager implements TenantManager {
 
         if (removeFromPersistentStorage) {
             deleteTenantUMData(tenantId);
-            Connection dbConnection = null;
-            PreparedStatement prepStmt = null;
-            try {
-                dbConnection = getDBConnection();
-                String sqlStmt = TenantConstants.DELETE_TENANT_SQL;
-                prepStmt = dbConnection.prepareStatement(sqlStmt);
-                prepStmt.setInt(1, tenantId);
 
-                prepStmt.executeUpdate();
-                dbConnection.commit();
-            } catch (SQLException e) {
-                DatabaseUtil.rollBack(dbConnection);
-                String msg = "Error in deleting the tenant with "
-                        + "tenant id: " + tenantId + ".";
-                if (log.isDebugEnabled()) {
+            try (Connection dbConnection = getDBConnection()) {
+                String sqlStmt = TenantConstants.DELETE_TENANT_SQL;
+                try (PreparedStatement prepStmt = dbConnection.prepareStatement(sqlStmt)) {
+                    prepStmt.setInt(1, tenantId);
+                    prepStmt.executeUpdate();
+                    dbConnection.commit();
+                } catch (SQLException e) {
+                    DatabaseUtil.rollBack(dbConnection);
+                    String msg = "Error in deleting the tenant with " + "tenant id: " + tenantId + ".";
                     log.debug(msg, e);
+                    throw new UserStoreException(msg, e);
                 }
+            } catch (SQLException e) {
+                String msg = "Error while accessing the database";
+                log.debug(msg, e);
                 throw new UserStoreException(msg, e);
-            } finally {
-                DatabaseUtil.closeAllConnections(dbConnection, prepStmt);
             }
         }
     }
 
 
     /**
-     * This method will delete all the tenant related user data
+     * This method will delete all the tenant related user data.
      *
-     * @param tenantId deleting tenant Id
+     * @param tenantId The ID of the tenant being deleted
      * @throws UserStoreException
      */
     private void deleteTenantUMData(int tenantId) throws UserStoreException {
