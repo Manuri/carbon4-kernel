@@ -61,8 +61,7 @@ public class UtilsTest {
         }
     }
 
-    @Test
-    public void testGetCarbonConfigHomePathNonNullSystemProperty() throws Exception {
+    @Test public void testGetCarbonConfigHomePathNonNullSystemProperty() throws Exception {
         String carbonRepoDirPath = System.getProperty(Constants.CARBON_REPOSITORY);
         boolean isCarbonHomeChanged = false;
 
@@ -78,9 +77,7 @@ public class UtilsTest {
         }
     }
 
-
-    @Test
-    public void testGetCarbonHome() throws Exception {
+    @Test public void testGetCarbonHome() throws Exception {
 
         String carbonHome = System.getProperty(Constants.CARBON_HOME);
         boolean isCarbonHomeChanged = false;
@@ -110,8 +107,8 @@ public class UtilsTest {
         setEnvironmentalVariables(backup);
     }
 
-    @Test(dependsOnMethods = "testGetCarbonHome")
-    public void testGetCarbonConfigHomePathNullSystemPropertyScenarioOne() throws Exception {
+    @Test(dependsOnMethods = "testGetCarbonHome") public void testGetCarbonConfigHomePathNullSystemPropertyScenarioOne()
+            throws Exception {
 
         String carbonRepoDirPath = System.getProperty(Constants.CARBON_REPOSITORY);
         boolean isCarbonRepoPathChanged = false;
@@ -135,12 +132,13 @@ public class UtilsTest {
             System.setProperty(Constants.CARBON_REPOSITORY, carbonRepoDirPath);
         }
 
+        backup.put(Constants.CARBON_REPOSITORY_PATH_ENV, null);
         setEnvironmentalVariables(backup);
 
     }
 
     //TODO: This fails in windows environment. Fix this
-   /* @Test(dependsOnMethods = {"testGetCarbonHome", "testGetCarbonConfigHomePathNullSystemPropertyScenarioOne"})
+    @Test(dependsOnMethods = { "testGetCarbonHome", "testGetCarbonConfigHomePathNullSystemPropertyScenarioOne" })
     public void testGetCarbonConfigHomePathNullSystemPropertyScenarioTwo() throws Exception {
         String backupCarbonRepoDirPath = System.getProperty(Constants.CARBON_REPOSITORY);
         Map<String, String> backupCarbonRepoPathEnv = System.getenv();
@@ -171,11 +169,9 @@ public class UtilsTest {
         if (backupCarbonHome == null) {
             System.clearProperty(Constants.CARBON_HOME);
         }
-    }*/
+    }
 
-
-    @Test
-    public void testSubstituteVarsSystemPropertyNotNull() {
+    @Test public void testSubstituteVarsSystemPropertyNotNull() {
         String carbonHome = System.getProperty(Constants.CARBON_HOME);
         boolean isCarbonHomeChanged = false;
 
@@ -192,8 +188,7 @@ public class UtilsTest {
         }
     }
 
-    @Test(expectedExceptions = RuntimeException.class)
-    public void testSubstituteVarsSystemPropertyIsNull() {
+    @Test(expectedExceptions = RuntimeException.class) public void testSubstituteVarsSystemPropertyIsNull() {
         String carbonHome = System.getProperty(Constants.CARBON_HOME);
         boolean isCarbonHomeChanged = false;
 
