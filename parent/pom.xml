@@ -458,7 +458,8 @@
 
         <test.framework.version>4.4.2</test.framework.version>
         <jacoco.agent.version>0.7.4.201502262128</jacoco.agent.version>
-        <testng.verson>6.1.1</testng.verson>
+        <!--<testng.verson>6.1.1</testng.verson>-->
+        <testng.verson>6.8.8</testng.verson>
     </properties>
 
     <dependencyManagement>
