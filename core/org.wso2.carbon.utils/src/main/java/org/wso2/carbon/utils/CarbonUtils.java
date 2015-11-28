@@ -16,7 +16,6 @@
 
 package org.wso2.carbon.utils;
 
-
 import org.apache.axiom.util.base64.Base64Utils;
 import org.apache.axis2.AxisFault;
 import org.apache.axis2.Constants;
@@ -60,7 +59,13 @@ import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -68,7 +73,11 @@ import java.math.BigInteger;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.MessageDigest;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 /**
  * A collection of useful utility methods
@@ -186,23 +195,36 @@ public class CarbonUtils {
 
     private static int readProxyPort(String transport) throws CarbonException {
         int proxyPort;
-        Class[] paramTypes = new Class[1];
-        paramTypes[0] = String.class;
-        try {
-            Class<?> transportManagerClass = Class.forName(TRANSPORT_MANAGER);
-            Object transportManager = transportManagerClass.newInstance();
-            Method method = transportManagerClass.getMethod("getProxyPort", paramTypes);
-            proxyPort = (Integer) method.invoke(transportManager, transport);
-        } catch (ClassNotFoundException e) {
-            throw new CarbonException("No class found with name : " + TRANSPORT_MANAGER, e);
-        } catch (InstantiationException e) {
-            throw new CarbonException("Error creating instance for : " + TRANSPORT_MANAGER, e);
-        } catch (IllegalAccessException e) {
-            throw new CarbonException("Error creating instance for : " + TRANSPORT_MANAGER, e);
-        } catch (NoSuchMethodException e) {
-            throw new CarbonException("No method found with name : getProxyPort(String param)", e);
-        } catch (InvocationTargetException e) {
-            throw new CarbonException("Error invoking method : getProxyPort() , with param: " + transport, e);
+
+        String workerProxyPort = null;
+        if (transport == "http") {
+            workerProxyPort = getServerConfiguration().getFirstProperty("WorkerHttpProxyPort");
+        } else if (transport == "https") {
+            workerProxyPort = getServerConfiguration().getFirstProperty("WorkerHttpsProxyPort");
+        }
+
+        if (workerProxyPort != null) {
+            proxyPort = Integer.parseInt(workerProxyPort);
+        } else {
+            Class[] paramTypes = new Class[1];
+            paramTypes[0] = String.class;
+            try {
+                Class<?> transportManagerClass = Class.forName(TRANSPORT_MANAGER);
+                Object transportManager = transportManagerClass.newInstance();
+                Method method = transportManagerClass.getMethod("getProxyPort", paramTypes);
+                proxyPort = (Integer) method.invoke(transportManager, transport);
+
+            } catch (ClassNotFoundException e) {
+                throw new CarbonException("No class found with name : " + TRANSPORT_MANAGER, e);
+            } catch (InstantiationException e) {
+                throw new CarbonException("Error creating instance for : " + TRANSPORT_MANAGER, e);
+            } catch (IllegalAccessException e) {
+                throw new CarbonException("Error creating instance for : " + TRANSPORT_MANAGER, e);
+            } catch (NoSuchMethodException e) {
+                throw new CarbonException("No method found with name : getProxyPort(String param)", e);
+            } catch (InvocationTargetException e) {
+                throw new CarbonException("Error invoking method : getProxyPort() , with param: " + transport, e);
+            }
         }
         return proxyPort;
     }
