@@ -150,6 +150,9 @@
 	<!--Override receive port of thrift based entitlement service.-->
 	<ThriftEntitlementReceivePort>10500</ThriftEntitlementReceivePort>
 
+    <WorkerHttpProxyPort>80</WorkerHttpProxyPort>
+    <WorkerHttpsProxyPort>443</WorkerHttpsProxyPort>
+
     </Ports>
 
     <!--

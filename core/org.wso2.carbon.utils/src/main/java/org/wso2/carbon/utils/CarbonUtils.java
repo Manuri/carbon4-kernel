@@ -192,23 +192,37 @@ public class CarbonUtils {
 
     private static int readProxyPort(String transport) throws CarbonException {
         int proxyPort;
-        Class[] paramTypes = new Class[1];
-        paramTypes[0] = String.class;
-        try {
-            Class<?> transportManagerClass = Class.forName(TRANSPORT_MANAGER);
-            Object transportManager = transportManagerClass.newInstance();
-            Method method = transportManagerClass.getMethod("getProxyPort", paramTypes);
-            proxyPort = (Integer) method.invoke(transportManager, transport);
-        } catch (ClassNotFoundException e) {
-            throw new CarbonException("No class found with name : " + TRANSPORT_MANAGER, e);
-        } catch (InstantiationException e) {
-            throw new CarbonException("Error creating instance for : " + TRANSPORT_MANAGER, e);
-        } catch (IllegalAccessException e) {
-            throw new CarbonException("Error creating instance for : " + TRANSPORT_MANAGER, e);
-        } catch (NoSuchMethodException e) {
-            throw new CarbonException("No method found with name : getProxyPort(String param)", e);
-        } catch (InvocationTargetException e) {
-            throw new CarbonException("Error invoking method : getProxyPort() , with param: " + transport, e);
+
+        String workerProxyPort = null;
+        ServerConfiguration serverConfiguration = getServerConfiguration();
+        if (transport == "http") {
+            workerProxyPort = serverConfiguration.getFirstProperty("Ports.WorkerHttpProxyPort");
+        } else if (transport == "https") {
+            workerProxyPort = serverConfiguration.getFirstProperty("Ports.WorkerHttpsProxyPort");
+        }
+
+        if (workerProxyPort != null) {
+            proxyPort = Integer.parseInt(workerProxyPort);
+        } else {
+            Class[] paramTypes = new Class[1];
+            paramTypes[0] = String.class;
+            try {
+                Class<?> transportManagerClass = Class.forName(TRANSPORT_MANAGER);
+                Object transportManager = transportManagerClass.newInstance();
+                Method method = transportManagerClass.getMethod("getProxyPort", paramTypes);
+                proxyPort = (Integer) method.invoke(transportManager, transport);
+
+            } catch (ClassNotFoundException e) {
+                throw new CarbonException("No class found with name : " + TRANSPORT_MANAGER, e);
+            } catch (InstantiationException e) {
+                throw new CarbonException("Error creating instance for : " + TRANSPORT_MANAGER, e);
+            } catch (IllegalAccessException e) {
+                throw new CarbonException("Error creating instance for : " + TRANSPORT_MANAGER, e);
+            } catch (NoSuchMethodException e) {
+                throw new CarbonException("No method found with name : getProxyPort(String param)", e);
+            } catch (InvocationTargetException e) {
+                throw new CarbonException("Error invoking method : getProxyPort() , with param: " + transport, e);
+            }
         }
         return proxyPort;
     }
