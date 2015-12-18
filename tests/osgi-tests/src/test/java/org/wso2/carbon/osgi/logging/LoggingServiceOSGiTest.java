@@ -20,6 +20,8 @@ import org.ops4j.pax.exam.spi.reactors.PerClass;
 import org.ops4j.pax.exam.testng.listener.PaxExam;
 import org.osgi.service.log.LogEntry;
 import org.osgi.service.log.LogReaderService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.Listeners;
 import org.testng.annotations.Test;
@@ -36,7 +38,8 @@ import javax.inject.Inject;
 @Listeners(PaxExam.class)
 @ExamReactorStrategy(PerClass.class)
 public class LoggingServiceOSGiTest {
-    private static final String START_UP_LOG_MESSAGE = "WSO2 Carbon started in";
+    private static final Logger logger = LoggerFactory.getLogger(LoggingServiceOSGiTest.class);
+    private static final String START_UP_LOG_MESSAGE = "Sample Logging Message";
 
     @Inject
     private CarbonServerInfo carbonServerInfo;
@@ -48,6 +51,9 @@ public class LoggingServiceOSGiTest {
     public void testServerLogStatus() {
         Assert.assertNotNull(carbonServerInfo, "Log reader service cannot be null");
         Assert.assertNotNull(logReaderService, "Log reader service cannot be null");
+
+        logger.info(START_UP_LOG_MESSAGE);
+
         Enumeration entries = logReaderService.getLog();
 
         Assert.assertEquals(entries.hasMoreElements(), true, "Log entry count should be greater than zero");
@@ -58,6 +64,6 @@ public class LoggingServiceOSGiTest {
                 flag = true;
             }
         }
-        Assert.assertEquals(flag, true, "Carbon Startup log not found");
+        Assert.assertEquals(flag, true, "Sample Logging Message not found");
     }
 }
